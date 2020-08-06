@@ -8,6 +8,42 @@
 
 import Cocoa
 
+struct Azura_song: Decodable {
+    let title, artist, text, art: String
+}
+
+struct Azura_now_playing: Decodable {
+    let song: Azura_song
+}
+
+struct AzuraCastNowPlayingStructure: Decodable {
+    let cache: String
+    let now_playing: Azura_now_playing
+}
+
+func getApiData( completion: @escaping (AzuraCastNowPlayingStructure)->()) {
+    let session = URLSession.shared
+    let url = URL(string: "https://radio.chickenfm.com/api/nowplaying/1")!
+
+    let task = session.dataTask(with: url) { data, response, error in
+
+        if error != nil || data == nil {
+            print("Client error!")
+            return
+        }
+
+
+        do {
+            let json = try JSONDecoder().decode(AzuraCastNowPlayingStructure.self, from: data!)
+            completion(json)
+        } catch {
+            print("JSON error: \(error.localizedDescription)")
+        }
+    }
+
+    task.resume()
+}
+
 class ViewController: NSViewController {
 
     @IBOutlet weak var textField1: NSTextField!
@@ -16,6 +52,10 @@ class ViewController: NSViewController {
     @IBOutlet weak var typeSelector: NSPopUpButton!
     
     @IBOutlet weak var label: NSTextField!
+    
+    @IBOutlet weak var nowPlayingLabel: NSTextField!
+    
+    var ret: String = "Loading...";
     
     @IBAction func buttonClicked(_ sender: Any) {
         if Int(textField1.stringValue) == nil || Int(textField2.stringValue) == nil  {
@@ -45,10 +85,27 @@ class ViewController: NSViewController {
             }
         }
     }
+    
+    @IBAction func updateButtonClicked(_ sender: Any) {
+        nowPlayingLabel.stringValue = "Loading..."
+        getApiData() { (data) -> () in
+            self.ret = data.now_playing.song.text
+            DispatchQueue.main.async {
+                   self.nowPlayingLabel.stringValue = self.ret
+                }
+        }
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
         // Do any additional setup after loading the view.
+        getApiData() { (data) -> () in
+            self.ret = data.now_playing.song.text
+            DispatchQueue.main.async {
+                   self.nowPlayingLabel.stringValue = self.ret
+                }
+        }
+
     }
 
     override var representedObject: Any? {
